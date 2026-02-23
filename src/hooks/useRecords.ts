@@ -26,15 +26,10 @@ export const useRecords = () => {
         try {
             setLoading(true);
             const walletAddress = localStorage.getItem('walletAddress');
-
-            // if (!walletAddress) {
-            //     setRecords([]);
-            //     return;
-            // }
             
 
-            const provider = new ethers.JsonRpcProvider(RPC_URL);
-            const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+            const provider = new ethers.JsonRpcProvider("https://evmrpc-testnet.0g.ai");
+            const contract = new ethers.Contract("0xB17A4a82Dab596356DaB37A8338E49F44c2bDdCA", CONTRACT_ABI, provider);
 
             const raw = await contract.getUserRecords(walletAddress);
 

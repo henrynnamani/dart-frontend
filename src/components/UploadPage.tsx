@@ -5,8 +5,7 @@ import { ethers } from 'ethers';
 import axios from 'axios';
 import { CONTRACT_ABI } from '../lib/abi';
 
-const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS;
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL  || 'http://localhost:3000';
+const CONTRACT_ADDRESS = "0xB17A4a82Dab596356DaB37A8338E49F44c2bDdCA";
 
 export const UploadPage: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -64,7 +63,7 @@ export const UploadPage: React.FC = () => {
       uploadFormData.append('author', formData.authors);
       uploadFormData.append('category', formData.category);
 
-      const { data } = await axios.post(`http://localhost:3000/storage/upload`, uploadFormData);
+      const { data } = await axios.post(`https://dart-backend-rz6v.onrender.com/storage/upload`, uploadFormData);
       const { rootHash, summary } = data;
 
       setStatus('signing');
@@ -74,7 +73,7 @@ export const UploadPage: React.FC = () => {
       const signer = await provider.getSigner();
 
 
-      const contract = new ethers.Contract("0xB17A4a82Dab596356DaB37A8338E49F44c2bDdCA", CONTRACT_ABI, signer);
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
       const tx = await contract.addRecord(
         formData.title,

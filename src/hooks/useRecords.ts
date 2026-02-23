@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { CONTRACT_ABI } from '../lib/abi';
 
-const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS!;
-const RPC_URL = import.meta.env.VITE_RPC_URL!;
+const CONTRACT_ADDRESS = "0xB17A4a82Dab596356DaB37A8338E49F44c2bDdCA";
+const RPC_URL = "https://evmrpc-testnet.0g.ai";
 
 export interface ResearchRecord {
     id: string;

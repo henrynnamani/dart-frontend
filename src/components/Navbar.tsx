@@ -17,27 +17,31 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange }) => 
 
   const connectWallet = async () => {
     try {
-      if (!(window as any).ethereum) {
-        alert('MetaMask not installed. Please install it to continue.');
-        return;
-      }
+        if (!(window as any).ethereum) {
+            alert('MetaMask not installed. Please install it to continue.');
+            return;
+        }
 
-      const provider = new ethers.BrowserProvider((window as any).ethereum);
-      await provider.send('eth_requestAccounts', []);
-      const signer = await provider.getSigner();
-      const userAddress = await signer.getAddress();
+        const provider = new ethers.BrowserProvider((window as any).ethereum);
+        await provider.send('eth_requestAccounts', []);
+        const signer = await provider.getSigner();
+        const userAddress = await signer.getAddress();
 
-      localStorage.setItem('walletAddress', userAddress);
-      setAddress(userAddress);
+        localStorage.setItem('walletAddress', userAddress);
+        setAddress(userAddress);
+
+        window.location.reload(); // ✅ refresh after connect
     } catch (error: any) {
-      console.error('Wallet connection failed:', error.message);
+        console.error('Wallet connection failed:', error.message);
     }
-  };
+};
 
   const disconnect = () => {
     localStorage.removeItem('walletAddress');
     setAddress(null);
-  };
+
+    window.location.reload(); // ✅ refresh after disconnect
+};
 
   return (
     <header className="sticky top-0 z-50 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-6 lg:px-12 py-3 flex items-center justify-between">

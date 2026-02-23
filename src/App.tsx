@@ -7,7 +7,7 @@ import { FilterBar } from './components/FilterBar';
 import { ResearchCard } from './components/ResearchCard';
 import { UploadPage } from './components/UploadPage';
 import { Footer, FloatingActions } from './components/Footer';
-import { TrendingUp } from 'lucide-react';
+import { TrendingUp, Wallet } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useRecords } from './hooks/useRecords';
 import { ResearchPaper } from './types';
@@ -105,16 +105,30 @@ export default function App() {
                                 </div>
                             ) : filteredRecords.length === 0 ? (
                                 <div className="text-center py-20 text-slate-400">
-                                    <p className="text-lg font-medium">
-                                        {searchQuery || activeCategory !== 'all'
-                                            ? 'No papers match your search.'
-                                            : 'No research papers found.'}
-                                    </p>
-                                    <p className="text-sm mt-1">
-                                        {searchQuery || activeCategory !== 'all'
-                                            ? 'Try a different search or category.'
-                                            : 'Connect your wallet or submit a paper to get started.'}
-                                    </p>
+                                    {!localStorage.getItem('walletAddress') ? (
+            // ✅ No wallet connected
+            <div className="flex flex-col items-center gap-4">
+                <div className="size-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
+                    <Wallet className="size-8 text-slate-400" />
+                </div>
+                <p className="text-lg font-medium text-slate-600 dark:text-slate-300">
+                    Connect your wallet to view research papers
+                </p>
+                <p className="text-sm text-slate-400">
+                    Click "Connect Wallet" in the navbar to get started
+                </p>
+            </div>
+        ) : searchQuery || activeCategory !== 'all' ? (
+            <div>
+                <p className="text-lg font-medium">No papers match your search.</p>
+                <p className="text-sm mt-1">Try a different search or category.</p>
+            </div>
+        ) : (
+            <div>
+                <p className="text-lg font-medium">No research papers found.</p>
+                <p className="text-sm mt-1">Submit a paper to get started.</p>
+            </div>
+        )}
                                 </div>
                             ) : (
                                 <div className="columns-1 md:columns-4 lg:columns-4 gap-6 space-y-6">

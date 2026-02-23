@@ -6,9 +6,10 @@ import { motion } from 'motion/react';
 interface ResearchCardProps {
   paper: ResearchPaper;
   isLoading?: boolean;
+  onSelect?: (paper: ResearchPaper) => void;
 }
 
-export const ResearchCard: React.FC<ResearchCardProps> = ({ paper, isLoading }) => {
+export const ResearchCard: React.FC<ResearchCardProps> = ({ paper, isLoading, onSelect }) => {
   if (isLoading) {
     return (
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 opacity-60">
@@ -27,6 +28,7 @@ export const ResearchCard: React.FC<ResearchCardProps> = ({ paper, isLoading }) 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -4 }}
+      onClick={() => onSelect?.(paper)}
       className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm hover:shadow-xl transition-all group mb-6 break-inside-avoid"
     >
       <div className="flex justify-between items-start mb-4">
@@ -63,6 +65,7 @@ export const ResearchCard: React.FC<ResearchCardProps> = ({ paper, isLoading }) 
           <Sparkles className="size-3" /> AI Summary
         </p>
         <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-3">
+          { console.log(paper.summary) }
           {paper.summary}
         </p>
         <button className="text-xs font-bold text-primary dark:text-white mt-2 flex items-center gap-1">
@@ -72,10 +75,6 @@ export const ResearchCard: React.FC<ResearchCardProps> = ({ paper, isLoading }) 
 
       <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700">
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1 text-slate-500">
-            <LinkIcon className="size-4" />
-            <span className="text-xs font-bold">{paper.citations.toLocaleString()} Citations</span>
-          </div>
           <div className="flex items-center gap-1 text-slate-500">
             <Calendar className="size-4" />
             <span className="text-xs">{paper.date}</span>

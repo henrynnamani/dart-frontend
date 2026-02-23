@@ -1,11 +1,18 @@
 import React, { useState, useCallback } from 'react';
 import { Upload, FileText, X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { ethers } from 'ethers';
+import axios from 'axios';
+import { CONTRACT_ABI } from '../lib/abi';
+
+const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS;
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL  || 'http://localhost:3000';
 
 export const UploadPage: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [status, setStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'uploading' | 'summarizing' | 'signing' | 'confirming' | 'success' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState('');
   const [formData, setFormData] = useState({
     title: '',
     authors: '',
@@ -27,39 +34,88 @@ export const UploadPage: React.FC = () => {
     e.preventDefault();
     setIsDragging(false);
     const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile && droppedFile.type === 'application/pdf') {
+    if (droppedFile) {
       setFile(droppedFile);
-    } else {
-      alert('Please upload a PDF file.');
     }
   }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile && selectedFile.type === 'application/pdf') {
-      setFile(selectedFile);
-    }
+    if (selectedFile) setFile(selectedFile);
   };
 
   const removeFile = () => {
     setFile(null);
     setStatus('idle');
+    setErrorMsg('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file) return;
 
-    setStatus('uploading');
-    
-    // Simulate upload
-    setTimeout(() => {
+    setErrorMsg('');
+
+    try {
+      setStatus('uploading');
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', file);
+      uploadFormData.append('title', formData.title);
+      uploadFormData.append('author', formData.authors);
+      uploadFormData.append('category', formData.category);
+
+      const { data } = await axios.post(`http://localhost:3000/storage/upload`, uploadFormData);
+      const { rootHash, summary } = data;
+
+      setStatus('signing');
+      if (!(window as any).ethereum) throw new Error('MetaMask not installed');
+      const provider = new ethers.BrowserProvider((window as any).ethereum);
+      await provider.send('eth_requestAccounts', []);
+      const signer = await provider.getSigner();
+
+
+      const contract = new ethers.Contract("0xB17A4a82Dab596356DaB37A8338E49F44c2bDdCA", CONTRACT_ABI, signer);
+
+      const tx = await contract.addRecord(
+        formData.title,
+        formData.authors,
+        formData.category,
+        rootHash,
+        summary,
+        file.name
+      );
+
+      setStatus('confirming');
+      await tx.wait();
+
       setStatus('success');
-    }, 2000);
+    } catch (error: any) {
+      setErrorMsg(error.message);
+      setStatus('error');
+    }
   };
 
+  const getButtonContent = () => {
+    switch (status) {
+      case 'uploading':
+        return <><Loader2 className="size-6 animate-spin" /> Uploading to 0G Storage...</>;
+      case 'summarizing':
+        return <><Loader2 className="size-6 animate-spin" /> Generating AI Summary...</>;
+      case 'signing':
+        return <><Loader2 className="size-6 animate-spin" /> Confirm in MetaMask...</>;
+      case 'confirming':
+        return <><Loader2 className="size-6 animate-spin" /> Confirming on Chain...</>;
+      case 'success':
+        return <><CheckCircle2 className="size-6" /> Submitted Successfully</>;
+      default:
+        return <><Upload className="size-6" /> Submit to ResearchChain</>;
+    }
+  };
+
+  const isLoading = ['uploading', 'summarizing', 'signing', 'confirming'].includes(status);
+
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="max-w-3xl mx-auto py-12"
@@ -73,19 +129,19 @@ export const UploadPage: React.FC = () => {
 
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* File Upload Zone */}
-        <div 
+        <div
           onDragOver={onDragOver}
           onDragLeave={onDragLeave}
           onDrop={onDrop}
           className={`relative border-2 border-dashed rounded-2xl p-12 transition-all flex flex-col items-center justify-center text-center ${
-            isDragging 
-              ? 'border-accent-teal bg-accent-teal/5' 
+            isDragging
+              ? 'border-accent-teal bg-accent-teal/5'
               : 'border-slate-200 dark:border-slate-700 hover:border-accent-teal/50'
           } ${file ? 'bg-slate-50 dark:bg-slate-900/50' : ''}`}
         >
           <AnimatePresence mode="wait">
             {!file ? (
-              <motion.div 
+              <motion.div
                 key="empty"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -95,11 +151,10 @@ export const UploadPage: React.FC = () => {
                 <div className="size-16 bg-accent-teal/10 rounded-full flex items-center justify-center mb-4">
                   <Upload className="size-8 text-accent-teal" />
                 </div>
-                <h3 className="text-lg font-semibold mb-1">Drag & drop your PDF</h3>
+                <h3 className="text-lg font-semibold mb-1">Drag & drop your file</h3>
                 <p className="text-sm text-slate-500 mb-4">or click to browse from your computer</p>
-                <input 
-                  type="file" 
-                  accept=".pdf"
+                <input
+                  type="file"
                   onChange={handleFileChange}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
@@ -108,7 +163,7 @@ export const UploadPage: React.FC = () => {
                 </div>
               </motion.div>
             ) : (
-              <motion.div 
+              <motion.div
                 key="file"
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -122,7 +177,7 @@ export const UploadPage: React.FC = () => {
                     <p className="text-sm font-bold truncate">{file.name}</p>
                     <p className="text-xs text-slate-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                   </div>
-                  <button 
+                  <button
                     type="button"
                     onClick={removeFile}
                     className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
@@ -130,15 +185,26 @@ export const UploadPage: React.FC = () => {
                     <X className="size-5 text-slate-400" />
                   </button>
                 </div>
-                
+
                 {status === 'success' && (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="mt-4 flex items-center gap-2 text-green-600 font-medium"
                   >
                     <CheckCircle2 className="size-5" />
                     Upload Successful!
+                  </motion.div>
+                )}
+
+                {status === 'error' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-4 flex items-center gap-2 text-red-600 font-medium text-sm text-center"
+                  >
+                    <AlertCircle className="size-5 shrink-0" />
+                    {errorMsg}
                   </motion.div>
                 )}
               </motion.div>
@@ -150,8 +216,8 @@ export const UploadPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Title</label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               required
               placeholder="Enter paper title"
               className="w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-accent-teal outline-none transition-all"
@@ -161,8 +227,8 @@ export const UploadPage: React.FC = () => {
           </div>
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Authors</label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               required
               placeholder="e.g. Dr. Jane Doe, John Smith"
               className="w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-accent-teal outline-none transition-all"
@@ -172,7 +238,7 @@ export const UploadPage: React.FC = () => {
           </div>
           <div className="space-y-2 md:col-span-2">
             <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Category</label>
-            <select 
+            <select
               className="w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-accent-teal outline-none transition-all"
               value={formData.category}
               onChange={(e) => setFormData({...formData, category: e.target.value})}
@@ -185,40 +251,14 @@ export const UploadPage: React.FC = () => {
               <option>Environment</option>
             </select>
           </div>
-          <div className="space-y-2 md:col-span-2">
-            <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Abstract</label>
-            <textarea 
-              rows={4}
-              required
-              placeholder="Provide a brief summary of your research..."
-              className="w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-accent-teal outline-none transition-all resize-none"
-              value={formData.abstract}
-              onChange={(e) => setFormData({...formData, abstract: e.target.value})}
-            />
-          </div>
         </div>
 
-        <button 
+        <button
           type="submit"
-          disabled={!file || status === 'uploading'}
+          disabled={!file || isLoading}
           className="w-full h-14 bg-primary text-white rounded-xl font-bold text-lg shadow-lg hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-3"
         >
-          {status === 'uploading' ? (
-            <>
-              <Loader2 className="size-6 animate-spin" />
-              Processing Manuscript...
-            </>
-          ) : status === 'success' ? (
-            <>
-              <CheckCircle2 className="size-6" />
-              Submitted Successfully
-            </>
-          ) : (
-            <>
-              <Upload className="size-6" />
-              Submit to ResearchChain
-            </>
-          )}
+          {getButtonContent()}
         </button>
       </form>
 
